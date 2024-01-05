@@ -9,43 +9,43 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout snapshot
+      - name: Checkout master
         uses: actions/checkout@v2
         with:
-          token: ${{ secrets.TOKEN }}
-          ref: snapshot
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: master
           fetch-depth: 0
       - name: Fetch upstream
         run: |
-          git remote add upstream https://github.com/KevinOConnor/klipper.git
+          git remote add upstream https://github.com/Klipper3d/klipper.git
           git fetch upstream master
       - name: Merge changes
         id: merge
         run: |
-          echo "::set-output name=status::success"
-          echo "::set-output name=tagname::snapshot-$(date +'%y%m%d')"
-          git config user.name Desuuuu
-          git config user.email Desuuuu@users.noreply.github.com
+	  echo "status=success" >> $GITHUB_OUTPUT
+	  echo "tagname=master-$(date +'%y%m%d')" >> $GITHUB_OUTPUT
+          git config user.name Ben Van Mierloo 
+          git config user.email benvanmierloo@users.noreply.github.com
           git merge --no-commit --no-ff upstream/master
-          git commit -m "Merge upstream changes" || echo "::set-output name=status::failure"
+          git commit -m "Merge upstream changes" || echo "status=failure" >> $GITHUB_OUTPUT
       - name: Push changes
-        if: steps.merge.outputs.status == 'success'
+        if: $GITHUB_OUTPUT.status == 'success'
         run: |
-          git push origin snapshot
+          git push origin master
       - name: Create tag
-        if: steps.merge.outputs.status == 'success'
+        if: $GITHUB_OUTPUT.status == 'success'
         run: |
-          git tag -m '/!\ This is an automated, untested release. Use at your own risk /!\' ${{ steps.merge.outputs.tagname }}
-          git push origin refs/tags/${{ steps.merge.outputs.tagname }}
+          git tag -m '/!\ This is an automated, untested release. Use at your own risk /!\' ${{ $GITHUB_OUTPUT.tagname }}
+          git push origin refs/tags/${{ $GITHUB_OUTPUT.tagname }}
       - name: Create prerelease
         uses: actions/github-script@v3
-        if: steps.merge.outputs.status == 'success'
+        if: $GITHUB_OUTPUT.status == 'success'
         with:
           github-token: ${{ secrets.TOKEN }}
           script: |
             await github.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: "${{ steps.merge.outputs.tagname }}",
+              tag_name: "${{ $GITHUB_OUTPUT.tagname }}",
               prerelease: true
             })
